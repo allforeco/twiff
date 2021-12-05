@@ -1,3 +1,9 @@
+# Specific Files
+/exports
+/logs
+cursor.json
+keys.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
