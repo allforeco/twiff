@@ -58,7 +58,7 @@ def main(args:Dict) -> None:
     
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Twitter Search', 
-                                     epilog='Please contact Sam Cantrill at sam.cantrill@gmail.com for further help.')
+                                     epilog='Please contact Sam for further help.')
     
     parser.add_argument('--key_path', type=str, default='keys.json',
                         help='Path for storing API keys.')
