@@ -2,7 +2,7 @@
 /exports
 /logs
 cursor.json
-sam_keys.json
+keys.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
