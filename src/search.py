@@ -82,11 +82,13 @@ if __name__=='__main__':
     args = parser.parse_args()
                         
     # Create logging directory
-    if not os.path.exists(args.log_dir): os.mkdir(args.log_dir)
+    #if not os.path.exists(args.log_dir): os.mkdir(args.log_dir)
 
-    logging.basicConfig(format='[ %(asctime)s ] %(name)s (%(levelname)s): %(message)s', 
-                        filename='{}/twiff_{}.log'.format(args.log_dir, datetime.datetime.now().strftime("%m%d%Y_%H%M%S")),
-                        level=logging.INFO)
+    #logging.basicConfig(format='[ %(asctime)s ] %(name)s (%(levelname)s): %(message)s', 
+    #                    filename='{}/twiff_{}.log'.format(args.log_dir, datetime.datetime.now().strftime("%m%d%Y_%H%M%S")),
+    #                    level=logging.INFO)
+    
+    logging.basicConfig(format='[ %(asctime)s ] %(name)s (%(levelname)s): %(message)s', level=logging.INFO)
     
     # Log arguments
     log.info(args)
