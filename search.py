@@ -32,6 +32,7 @@ def main(args:Dict) -> None:
         log.info('----- [ Request {} ] -----'.format(idx+1))
         
         # Make search request...
+        log.info('Searching for relevant tweets between {} and {}...'.format(old_cursor._newest_id(), new_cursor._oldest_id()))
         responses = client.search_recent_tweets(query=args.query, 
                                                 expansions=['author_id', 'entities.mentions.username', 'geo.place_id', 'in_reply_to_user_id', 'referenced_tweets.id', 'referenced_tweets.id.author_id'],
                                                 max_results=10, 
@@ -45,7 +46,7 @@ def main(args:Dict) -> None:
         # Process response...
         results = Results(responses) 
         retrieved_count += results.metadata.result_count
-
+        
         # Exit condition...
         if results.metadata.result_count:
             new_cursor._update(results.metadata.oldest_id, results.metadata.newest_id)

@@ -27,7 +27,7 @@ class Keys:
         
     def _load(self, path):
         if os.path.exists(path):
-            with open('keys.json', 'r') as f: return json.load(f) 
+            with open(path, 'r') as f: return json.load(f) 
         else:
             log.critical('No key file found "{}". Cannot authenticate Client without keys.'.format(path))
             
@@ -67,7 +67,7 @@ class Cursor:
         if self.data['oldest_id'] is None:
             self.data['oldest_id'] = oldest_id
         else:
-            self.data['oldest_id'] = oldest_id if oldest_id>self.data['oldest_id'] else self.data['oldest_id'] 
+            self.data['oldest_id'] = oldest_id if oldest_id<self.data['oldest_id'] else self.data['oldest_id'] 
         
         # Updated self.newest_id if newest_id is LARGER (more recent than) currently stored
         if self.data['newest_id'] is None:

@@ -1,0 +1,15 @@
+### Standard Packages ###
+os
+sys
+abc
+json
+math
+typing
+pathlib
+logging
+datetime
+argparse
+
+
+### Specific Packages ###
+tweepy
