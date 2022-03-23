@@ -1,0 +1,36 @@
+{
+    "search": {
+        "module": "twiff.search",
+        "call": "search",
+        "config": {
+            "cursor": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\cursor.json",
+            "query": "(#twiff OR #Twiff) -is:retweet -from:twiff_bot", 
+            "max_requests": 100
+        }
+    },
+    "like": {
+        "module": "twiff.search",
+        "call": "like",
+        "config": {
+            "max_requests": 100
+        }
+    },
+    "parse": {
+        "module": "twiff.utils.parse",
+        "call": "SimpleParser"
+    },
+    "respond": {
+        "module": "twiff.utils.reply",
+        "call": "ReplyGenerator",
+        "config": {
+            "path": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\responses.json"
+        }
+    },
+    "export": {
+        "module": "twiff.utils.io",
+        "call": "dump_json_items",
+        "config": {
+            "output": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\dump"
+        }
+    }
+}
