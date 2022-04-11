@@ -168,6 +168,8 @@ def main(args) -> None:
     
     # Attempt to parse tweets using provided method.
     parsed_tweets = parse(tweets=tweets, tweet_parser=load_module(config, "parse"))
+    # Use to implement _v2 code
+    # parsed_tweets = parse(tweets=tweets, users=users, tweet_parser=load_module(config, "parse"))
     
     # Reply to parsed tweets using generated response.
     reply(client=client, parsed_tweets=parsed_tweets, response_generator=load_module(config, "respond"))
