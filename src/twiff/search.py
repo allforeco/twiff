@@ -12,19 +12,31 @@ from twiff import load_module
 
 log = logging.getLogger(__name__)
 
-def search(client:Any, cursor:str, query:str, max_requests:Optional[int]=100) -> Tuple[Dict, Dict, list]:
+def search(client:Any, cursor:str, query:str, max_requests:Optional[int]=100) -> Tuple[Dict, Dict, list, Dict]:
     """ Search Tweets
     
+        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
+        Rate limit: 450 requests per 15-minute window shared among all users of your app
+    
         Args:
-            X
+            client (): 
+            cursor (str):
+            query (str):
+            max_requests (Optional[int]=100): 
             
         Returns:
-            X
+            tweets (Dict): 
+            users (Dict): 
+            errors (list): 
+            metadata (Dict): 
             
         Example::
-            X
+            >>>
+            >>>
+            >>>
+            
     """
-    tweets, users, errors = {}, {}, []
+    tweets, users, errors, metadata = {}, {}, [], {}
     
     # Prepare cursors for retrieving tweets.
     from twiff.utils.cursor import Cursor
@@ -74,6 +86,9 @@ def like(client:Any, tweets:Dict, max_requests:Optional[int]=100) -> None:
     """ Likes tweets using associated tweet id.
     
         Using max_likes may be necessary depending on whether you can afford to respect wait limits for all retrieved tweets.
+        
+        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
+        Rate limit: 50 requests per 15-minute window per each authenticated user
     
         Args:
             X
@@ -83,11 +98,13 @@ def like(client:Any, tweets:Dict, max_requests:Optional[int]=100) -> None:
             
         Example::
             X
+            
     """
     if max_requests:
         for idx, (id_str, tweet) in enumerate(tweets.items()):
-            if idx+1>=max_requests: break
+            if idx>=max_requests: break
             client.like(id_str)
+                       
     
 def parse(tweets:Dict, tweet_parser:Callable) -> Dict:
     """ Handles parsing of tweets using the provided tweet parsing method.
@@ -106,17 +123,50 @@ def parse(tweets:Dict, tweet_parser:Callable) -> Dict:
         Example::
             >>> x
             >>> y
+            
     """
     parsed_tweets = {}
     for idx, (id_str, tweet) in enumerate(tweets.items()):
         parsed_tweets[id_str] = tweet_parser(tweet)
-        
     log.info(f"Successfully parsed {len([None for val in parsed_tweets.values() if val is not None])} tweets out of {len(tweets)}.")
         
     return parsed_tweets
+ 
+
+def retweet(client:Any, parsed_tweets:Dict, max_requests:Optional[int]=100) -> None:
+    """ Likes tweets using associated tweet id.
+    
+        Using max_likes may be necessary depending on whether you can afford to respect wait limits for all retrieved tweets.
+        
+        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
+        Rate limit: 50 requests per 15-minute window per each authenticated user
+    
+        Args:
+            X
+            
+        Returns:
+            X
+            
+        Example::
+            X
+            
+    """
+    if max_requests:
+        success = 0
+        for idx, (id_str, parsed_tweets) in enumerate(parsed_tweets.items()):
+            if parsed_tweets["response"]=="success":
+                client.retweet(id_str)
+                success += 1
+            if success>=max_requests: break
+    log.info(f"Retweeted {success} tweets.")
+            
     
 def reply(client:Any, parsed_tweets:Dict, response_generator:Callable) -> None:
     """ Replies to the author of the parsed tweet as dictated by the provided response_generator.
+        
+        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
+        Rate limit: 200 requests per 15-minute window per each authenticated user
+    
     
         Args:
             client (tweepy.Client): Registered and X client.
@@ -136,10 +186,12 @@ def reply(client:Any, parsed_tweets:Dict, response_generator:Callable) -> None:
             >>> tweets = search(...)
             >>> parsed_tweets = twiff.utils.parse.parse_tweets(tweets)
             >>> reply(client, parsed_tweets, ...) # ...
+            
     """
     for idx, (id_str, parsed_tweet) in enumerate(parsed_tweets.items()):
         response = response_generator(parsed_tweet)
         client.create_tweet(in_reply_to_tweet_id=id_str, text=response)
+    log.info(f"Replied to {idx+1} tweets.")
 
 
 def main(args) -> None:
@@ -161,15 +213,20 @@ def main(args) -> None:
                     return_type=dict, wait_on_rate_limit=True)
     
     # Perform search using provided query.
-    tweets, users, errors, metadata = search(client=client, **config["search"]["config"]) 
+    tweets, users, errors, metadata = search(client=client, **config["search"]["config"])
     
-    # Like retrieved tweets.
+    # Like retrieved tweets: like all retrieved tweets
     like(client=client, tweets=tweets, **config["like"]["config"])
-    
-    # Attempt to parse tweets using provided method.
+       
+    # Attempt to parse tweets using provided method: parse according to pre-determined format
     parsed_tweets = parse(tweets=tweets, tweet_parser=load_module(config, "parse"))
     
-    # Reply to parsed tweets using generated response.
+    log.info(f"{parsed_tweets}")
+    
+    # Retweet retrieved tweets: retweet successfully parsed tweets
+    retweet(client=client, parsed_tweets=parsed_tweets, **config['retweet']['config'])
+    
+    # Reply to parsed tweets using generated response: reply to all tweets with different responses
     reply(client=client, parsed_tweets=parsed_tweets, response_generator=load_module(config, "respond"))
     
     # Export/dump data to disk for longer-term storage.
@@ -180,15 +237,12 @@ def main(args) -> None:
     
 def get_arg_parser():
     parser = argparse.ArgumentParser(description='Twitter Search', 
-                                     epilog='Please contact Sam for further help.')
-    
+                                     epilog='Please contact Sam for further help.')    
     parser.add_argument('--config', type=str,
                         help='Configuration file for running the job.') 
     parser.add_argument('--keys', type=str,
-                        help='Path for storing API keys.')
-    
+                        help='Path for storing API keys.')   
     return parser
-    
     
     
 if __name__=='__main__':

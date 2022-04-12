@@ -5,14 +5,21 @@
         "config": {
             "cursor": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\cursor.json",
             "query": "(#twiff OR #Twiff) -is:retweet -from:twiff_bot", 
-            "max_requests": 100
+            "max_requests": 10
         }
     },
     "like": {
         "module": "twiff.search",
         "call": "like",
         "config": {
-            "max_requests": 100
+            "max_requests": 10
+        }
+    },
+    "retweet": {
+        "module": "twiff.search",
+        "call": "retweet",
+        "config": {
+            "max_requests": 10
         }
     },
     "parse": {

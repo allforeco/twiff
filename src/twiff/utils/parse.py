@@ -59,17 +59,20 @@ class SimpleParser(TweetParser):
         tokens = remove_integer_tokens(tokens)
 
         if num_people:
-            parsed_tweet = {"response":"success",
-                            "data":{"num_people":num_people, 
-                                    "created_at":tweet['created_at'], 
-                                    "organization":tokens[0], 
-                                    "location":', '.join(tokens[1:])
-                                   }
-                           }
+            parsed_tweet = {
+                "response": "success",
+                "data": {
+                    "num_people":num_people, 
+                    "created_at":tweet['created_at'], 
+                    "organization":tokens[0], 
+                    "location":', '.join(tokens[1:])
+                }
+            }
         else:
-            parsed_tweet = {"response":"failed",
-                            "data":None
-                           }
+            parsed_tweet = {
+                "response":"failed",
+                "data":None
+            }
 
         return parsed_tweet
 
