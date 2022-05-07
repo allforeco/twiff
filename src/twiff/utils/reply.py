@@ -34,7 +34,7 @@ class ReplyGenerator:
 
 # Added _v2 to the new methods as some conflict with existing methods
 
-class ReplyGenerator_v2:
+class ReplyGenerator:
     """ ...
     """
 
@@ -56,27 +56,33 @@ class ReplyGenerator_v2:
         """
 
         # Find the correct response
-        sResponseType = "tweet-parse-" + parsed_tweet['response']
-        if parsed_tweet['response'] == 'success':
+        sResponseType = "tweet-parse-" + parsed_tweet["response"]
+        if parsed_tweet["response"] == "success":
             if "tweettype" in parsed_tweet:
                 sResponse = self.responses[sResponseType + "-" + parsed_tweet["tweettype"]]
-                return sResponse.format(parsed_tweet["data"]["num_people"], parsed_tweet["data"]["location"],
-                                        parsed_tweet["data"]["organization"])
+                if parsed_tweet["data"]["num_people"] == 1:
+                    sPerson = "person"
+                else:
+                    sPerson = "people"
+                return sResponse.format(parsed_tweet["data"]["num_people"],
+                                        sPerson,
+                                        parsed_tweet["data"]["location"],
+                                        parsed_tweet["data"]["organization"],
+                                        parsed_tweet["data"]["url"])
             else:
                 return self.responses[sResponseType]
         else:
             if "errors" in parsed_tweet:
-                if "no_org_found" in parsed_tweet["errors"]:
-                    sResponse = self.responses[sResponseType + "-no_org_found"]
-                    return sResponse.format(parsed_tweet["data"]["organization"])
-                if "no_country_found" in parsed_tweet["errors"]:
-                    sResponse = self.responses[sResponseType + "-no_country_found"]
-                    return sResponse.format(parsed_tweet["data"]["location"])
-                if "no_city_found" in parsed_tweet["errors"]:
-                    sResponse = self.responses[sResponseType + "-no_city_found"]
-                    return sResponse.format(parsed_tweet["data"]["location"])
-                if "no_people_found" in parsed_tweet["errors"]:
-                    sResponse = self.responses[sResponseType + "-no_people_found"]
-                    return sResponse.format(parsed_tweet["data"]["num_people"])
+                if parsed_tweet["errors"] is not None:
+                    sResponse = self.responses[sResponseType + "-" + parsed_tweet["errors"][0]]
+                    if sResponse == "":
+                        return None
+                    return sResponse.format(parsed_tweet["data"]["organization"],
+                                            parsed_tweet["data"]["location"],
+                                            parsed_tweet["data"]["num_people"])
+                else:
+                    return self.responses['tweet-parse-failed']
             else:
                 return self.responses['tweet-parse-failed']
+
+
