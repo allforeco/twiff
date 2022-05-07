@@ -8,5 +8,6 @@
     "tweet-parse-failed-no_state_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your state ({1}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
     "tweet-parse-failed-no_city_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your city ({1}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
     "tweet-parse-failed-no_people_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract a number of people ({2}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
-    "tweet-parse-failed-twifftext_too_short": ""
+    "tweet-parse-failed-twifftext_too_short": "",
+    "tweet-parse-failed-banned_word": ""
 }
