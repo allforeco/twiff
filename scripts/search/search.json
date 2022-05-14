@@ -5,30 +5,30 @@
         "config": {
             "cursor": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\cursor.json",
             "query": "(#twiff OR #Twiff) -is:retweet -from:twiff_bot", 
-            "max_requests": 50
+            "max_requests": 10
         }
     },
     "like": {
         "module": "twiff.search",
         "call": "like",
         "config": {
-            "max_requests": 50
+            "max_requests": 10
         }
     },
     "retweet": {
         "module": "twiff.search",
         "call": "retweet",
         "config": {
-            "max_requests": 50
+            "max_requests": 10
         }
     },
     "parse": {
         "module": "twiff.utils.parse",
-        "call": "SimpleParser"
+        "call": "FullTweetParser_v2"
     },
     "respond": {
         "module": "twiff.utils.reply",
-        "call": "ReplyGenerator",
+        "call": "ReplyGenerator_v2",
         "config": {
             "path": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\responses.json"
         }

@@ -106,7 +106,7 @@ def like(client:Any, tweets:Dict, max_requests:Optional[int]=100) -> None:
             client.like(id_str)
                        
     
-def parse(tweets:Dict, tweet_parser:Callable) -> Dict:
+def parse(tweets:Dict, users:Dict, tweet_parser:Callable) -> Dict:
     """ Handles parsing of tweets using the provided tweet parsing method.
     
         NOTE: 
@@ -127,7 +127,7 @@ def parse(tweets:Dict, tweet_parser:Callable) -> Dict:
     """
     parsed_tweets = {}
     for idx, (id_str, tweet) in enumerate(tweets.items()):
-        parsed_tweets[id_str] = tweet_parser(tweet)
+        parsed_tweets[id_str] = tweet_parser(tweet, users)
     log.info(f"Successfully parsed {len([None for val in parsed_tweets.values() if val is not None])} tweets out of {len(tweets)}.")
         
     return parsed_tweets
@@ -191,7 +191,6 @@ def reply(client:Any, parsed_tweets:Dict, response_generator:Callable) -> None:
     for idx, (id_str, parsed_tweet) in enumerate(parsed_tweets.items()):
         response = response_generator(parsed_tweet)
         client.create_tweet(in_reply_to_tweet_id=id_str, text=response)
-    log.info(f"Replied to {idx+1} tweets.")
 
 
 def main(args) -> None:
@@ -219,9 +218,7 @@ def main(args) -> None:
     like(client=client, tweets=tweets, **config["like"]["config"])
        
     # Attempt to parse tweets using provided method: parse according to pre-determined format
-    parsed_tweets = parse(tweets=tweets, tweet_parser=load_module(config, "parse"))
-    
-    log.info(f"{parsed_tweets}")
+    parsed_tweets = parse(tweets=tweets, users=users, tweet_parser=load_module(config, "parse"))
     
     # Retweet retrieved tweets: retweet successfully parsed tweets
     retweet(client=client, parsed_tweets=parsed_tweets, **config['retweet']['config'])

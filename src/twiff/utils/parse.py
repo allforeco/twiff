@@ -77,36 +77,6 @@ class SimpleParser(TweetParser):
         return parsed_tweet
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def num_people_from_tokens(tokens):
     # Search for first token with run of 1
     run = 0
@@ -250,7 +220,7 @@ def TryParseDateOnly_v2(DateTimeString: str):
 
 class FullTweetParser_v2(TweetParser):
     def __init__(self) -> None:
-        super(FullTweetParser, self).__init__()
+        super(FullTweetParser_v2, self).__init__()
 
     def __call__(self, tweet: dict, users: []) -> dict:
         # To start parsing the twiff data, first extract some tweet data

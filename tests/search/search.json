@@ -24,11 +24,11 @@
     },
     "parse": {
         "module": "twiff.utils.parse",
-        "call": "SimpleParser"
+        "call": "FullTweetParser_v2"
     },
     "respond": {
         "module": "twiff.utils.reply",
-        "call": "ReplyGenerator",
+        "call": "ReplyGenerator_v2",
         "config": {
             "path": "C:\\Users\\samca\\Documents\\Python Projects\\twiff\\tests\\search\\responses.json"
         }
