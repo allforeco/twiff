@@ -181,6 +181,18 @@ def FindUserNameById_v2(users: [], userID):
         if user["id"] == userID:
             return user["username"]
 
+def FindUserIdByName_v2(users: [], userName):
+    user: dict
+    for user in users:
+        if user["username"] == userName:
+            return user["id"]
+
+def AddError_v2(errors: [], newError: str) -> []:
+    if errors is None:
+        errors = [newError]
+    else:
+        errors.append(newError)
+    return errors
 
 def TryParseDateOnly_v2(DateTimeString: str):
     # Parses 4 formats, year always 4 digits
@@ -202,8 +214,8 @@ def TryParseDateOnly_v2(DateTimeString: str):
             # American style, convert to EU style, date first
             sDate = sNumbers[1] + "-" + sNumbers[0] + "-" + sNumbers[2]
         else:
-            # No conversion needed
-            sDate = DateTimeString
+            # No conversion needed, but make sure -'s are in, not any other delimiter
+            sDate = sNumbers[0] + "-" + sNumbers[1] + "-" + sNumbers[2]
     else:
         # If not split by the char in 5th place
         sNumbers = DateTimeString.split(DateTimeString[4:5])
@@ -220,8 +232,10 @@ def TryParseDateOnly_v2(DateTimeString: str):
 
 class FullTweetParser_v2(TweetParser):
     def __init__(self) -> None:
-        super(FullTweetParser_v2, self).__init__()
-
+        super(FullTweetParser, self).__init__()
+        with open(Path("banned_words.json"), 'r') as fp:
+                self.BannedWords = json.load(fp)
+                
     def __call__(self, tweet: dict, users: []) -> dict:
         # To start parsing the twiff data, first extract some tweet data
         sTweetText: str = tweet["text"]
@@ -253,6 +267,7 @@ class FullTweetParser_v2(TweetParser):
         sTweetUrl = ""
         sQuoteURL = ""
         sTweetType = "Normal"  # Remember tweet type for replies
+        sQuotedUserId = ""
         if "referenced_tweets" in tweet:
             dRefTweets = tweet["referenced_tweets"]
             rft: dict
@@ -264,24 +279,35 @@ class FullTweetParser_v2(TweetParser):
                         if sTweetID in str(Url["expanded_url"]):
                             sTweetUrl = Url["expanded_url"]
                             sQuoteURL = Url["url"]
+                            sQuotedUserName = sTweetUrl.split("/")[3]
+                            sQuotedUserId = FindUserIdByName_v2(users, sQuotedUserName)
                     break
         if sTweetUrl == "":
             sUserId = tweet["author_id"]
-            sUserName = FindUserNameById(users, sUserId)
+            sUserName = FindUserNameById_v2(users, sUserId)
             sTweetUrl = "https://twitter.com/" + sUserName + "/status/" + tweet["id"]
         # Parse the twiff
-        dParsed = self.TwiffParser(sTwiffText, tTweetDate, sTweetUrl, sQuoteURL)
+        dParsed = self.TwiffParser_v2(sTwiffText, tTweetDate, sTweetUrl, sQuoteURL)
+        # Check for banned words
+        if any(word in sTweetText.split() for word in self.BannedWords["single_words"]):
+            dParsed["response"] = "failed"
+            dParsed["errors"] = AddError_v2(dParsed["errors"], "banned_word")
+        elif any(word in sTweetText for word in self.BannedWords["multi_words"]):
+            dParsed["response"] = "failed"
+            dParsed["errors"] = AddError_v2(dParsed["errors"], "banned_word")
         dParsed["tweettype"] = sTweetType
         return dParsed
 
-    def TwiffParser(self, TwiffText, TweetDate, TweetURL, QouteURL) -> dict:
+    def TwiffParser_v2(self, TwiffText, TweetDate, TweetURL, QuoteURL) -> dict:
         # Let's see if we can extract twiff data from the tweet
         # Us machines need to account for the fact that humans make mistakes,
         # so let's see if we can work with whatever the human gave us.
 
         # TwiffText is a string that only contains twiff data, can it contain useful information?
+        # primary check to prevent errors in the next section
+        aErrors = []
         if len(TwiffText) < 10:
-            return {"response": "failed", "data": None, "errors": ["twifftext_too_short"]}
+            return {"response": "failed", "data": None, "errors": AddError_v2(aErrors, "twifftext_too_short")}
 
         # let's assume the 6th character is a delimiter,
         # Unless that is a space, then check for a delimiter after the space, or numbers.
@@ -291,11 +317,15 @@ class FullTweetParser_v2(TweetParser):
         sDelimiter = TwiffText[i:i + 1]
         TwiffText = TwiffText[6:]
         # remove the quote URL if needed
-        if QouteURL != "":
-            TwiffText = TwiffText.replace(QouteURL, "")
+        if QuoteURL != "":
+            TwiffText = TwiffText.replace(QuoteURL, "")
         # Also cut out when a new line is started
         if "\n" in TwiffText:
             TwiffText = TwiffText.split("\n")[0]
+        # TwiffText is a string that only contains twiff data, can it contain useful information?
+        # secondary check to see if continuing is useful
+        if len(TwiffText) < 10:
+            return {"response": "failed", "data": None, "errors": AddError_v2(aErrors, "twifftext_too_short")}
         # Now we know the delimiter, create the datafields
         sDatafields = TwiffText.split(sDelimiter)
         # Clean up actions
@@ -316,12 +346,12 @@ class FullTweetParser_v2(TweetParser):
             if sDatafield == "":
                 continue
             # If it's a number is must be the numer of people (0)
-            if sDatafield.isnumeric():
+            if sDatafield.isnumeric() and nPeople == 0:  # 20220415 Added 0 check
                 nPeople = int(sDatafield)
                 continue
             # If it starts with a number, and is between 6 and 10 chars long, it must be the date(5)
             if sDatafield[0:2].isnumeric():
-                bOK, tDate = TryParseDateOnly(sDatafield)
+                bOK, tDate = TryParseDateOnly_v2(sDatafield)
                 if not bOK:
                     tDate = None
                 continue
@@ -353,30 +383,39 @@ class FullTweetParser_v2(TweetParser):
         if sURL == "":
             sURL = TweetURL
 
+        # Clean up locations
+        if "." in sCountry:
+            sCountry = sCountry.split(".")[0]
+        if "." in sState:
+            sState = sState.split(".")[0]
+        if "." in sCity:
+            sCity = sCity.split(".")[0]
+
         # We now made the most of the data as we could, let's do some basic checks before reporting
-        sErrors = ["no_error_yet"]
         if len(sOrganisation) < 3 or len(sOrganisation) > 50 or "http" in sOrganisation:
-            sErrors.append("no_org_found")
+            aErrors = AddError_v2(aErrors, "no_org_found")
         if len(sCountry) < 2 or len(sCountry) > 35 or "http" in sCountry:
-            sErrors.append("no_country_found")
-        if len(sCity) < 3 or len(sCity) > 60 or "http" in sCity:
-            sErrors.append("no_city_found")
+            aErrors = AddError_v2(aErrors, "no_country_found")
+        if len(sState) > 35 or "http" in sState:
+            aErrors = AddError_v2(aErrors, "no_state_found")
+        if len(sCity) > 60 or "http" in sCity:
+            aErrors = AddError_v2(aErrors, "no_city_found")
         if nPeople == 0:
-            sErrors.append("no_people_found")
+            aErrors = AddError_v2(aErrors, "no_people_found")
         # Report back the results
         dParsed: dict
         sFullLocation = sCountry
         if sState != "":
             sFullLocation = sFullLocation + " " + sState
         sFullLocation = sFullLocation + " " + sCity
-        if len(sErrors) > 1:
+        if len(aErrors) > 0:
             dParsed = {"response": "failed",
                        "data": {"num_people": nPeople,
                                 "created_at": tDate.strftime("%d-%m-%Y"),
                                 "organization": sOrganisation,
                                 "location": sFullLocation,
                                 "url": sURL},
-                       "errors": sErrors}
+                       "errors": aErrors}
         else:
             dParsed = {"response": "success",
                        "data": {"num_people": nPeople,
@@ -386,3 +425,4 @@ class FullTweetParser_v2(TweetParser):
                                 "url": sURL},
                        "errors": None}
         return dParsed
+

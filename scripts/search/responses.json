@@ -1,10 +1,13 @@
 {
     "tweet-parse-success": "dev-test-message: Successfully parsed tweet.",
     "tweet-parse-failed": "dev-test-message: Failed to parse tweet.",
-    "tweet-parse-success-Normal": "Thank you for reporting your action to the map using TwiffBot\nThis is the data I got from your tweet\n{0} people in {1} with {2}\nCheck the latest reports to see your action https://www.gamechanger.eco/action/start/latest_reports",
-    "tweet-parse-success-Quoted": "Thank you for helping to report to the map using TwiffBot\nThis is the data I got from your tweet\n{0} people in {1} with {2}\nCheck the latest reports to see your action https://www.gamechanger.eco/action/start/latest_reports",
+    "tweet-parse-success-Normal": "Thank you for reporting your action to the map using TwiffBot\nThis is the data I got from your tweet\n{0} {1} in {2} with {3}\nCheck the latest reports to see your action https://www.gamechanger.eco/action/start/latest_reports",
+    "tweet-parse-success-Quoted": "Thank you for helping to report to the map using TwiffBot\nThis is the data I got from your tweet\n{0} {1} in {2} with {3}\nCheck the latest reports to see your action https://www.gamechanger.eco/action/start/latest_reports\n{4}",
     "tweet-parse-failed-no_org_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your organisation ({0}) from your tweet.",
-    "tweet-parse-failed-no_country_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your country ({0}) from your tweet.",
-    "tweet-parse-failed-no_city_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your city ({0}) from your tweet.",
-    "tweet-parse-failed-no_people_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract a number of people ({0}) from your tweet."
+    "tweet-parse-failed-no_country_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your country ({1}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
+    "tweet-parse-failed-no_state_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your state ({1}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
+    "tweet-parse-failed-no_city_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract your city ({1}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
+    "tweet-parse-failed-no_people_found": "Thank you for trying to report to the map, I'm sorry we weren't able to extract a number of people ({2}) from your tweet.\nPlease check my manual https://actionnetwork.org/groups/twiff-manual",
+    "tweet-parse-failed-twifftext_too_short": "",
+    "tweet-parse-failed-banned_word": ""
 }
