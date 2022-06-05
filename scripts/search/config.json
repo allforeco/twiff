@@ -3,7 +3,7 @@
         "module": "twiff.search",
         "call": "search",
         "config": {
-            "cursor": "/app/cursor.json",
+            "cursor": "/app/logs/cursor.json",
             "query": "(#twiff OR #Twiff) -is:retweet -from:twiff_bot"
         }
     },

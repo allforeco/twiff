@@ -1,5 +1,6 @@
 import os
 import sys
+import uuid
 import json
 import logging
 from importlib import import_module
@@ -9,7 +10,15 @@ log = logging.getLogger(__name__)
 
 def main():
     # Logging
-    logging.basicConfig(format="Twitter4Future: [ %(asctime)s ] %(name)s | %(levelname)s | %(message)s", datefmt="%m/%d/%Y %I:%M:%S%p", level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="Twitter4Future: [ %(asctime)s ] %(name)s | %(levelname)s | %(message)s", 
+        datefmt="%m/%d/%Y %I:%M:%S%p", 
+        handlers = [
+            logging.FileHandler(f"/app/logs/out.log", mode='a'),
+            logging.StreamHandler()
+        ]
+    )
     log.info(f"Executing {sys.argv[1]}...")
     
     # Ensure correct number of args

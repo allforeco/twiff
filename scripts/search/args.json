@@ -1,4 +1,4 @@
 {
     "config": "/app/config/config.json",
-    "max_requests": 10
+    "max_requests": 50
 }

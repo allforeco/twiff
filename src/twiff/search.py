@@ -170,14 +170,22 @@ def reply(client:Any, parsed_tweets:Dict, generator:Callable, max_requests:Optio
             >>> reply(client, parsed_tweets, ...) # ...
             
     """
+    # TODO: Replying to tweets needs persistent memory of replied-to tweets, can't get this from API easily to use filesystem.
+    from pathlib import Path
+    path = "/app/output/tweets"
+    ids = [p.name.split('.')[0] for p in Path(path).glob("*.json")] if Path(path).exists() else []
+    
     if max_requests:
         success = 0
         for idx, (id_str, parsed_tweet) in enumerate(parsed_tweets.items()):
-            if parsed_tweet['response'] == "success":
-                response = generator(parsed_tweet)
-                if response is not None:
-                    client.create_tweet(in_reply_to_tweet_id=id_str, text=response)
-                    success += 1
+            if id_str not in ids:
+                if parsed_tweet['response'] == "success":
+                    response = generator(parsed_tweet)
+                    if response is not None:
+                        client.create_tweet(in_reply_to_tweet_id=id_str, text=response)
+                        success += 1
+            else:
+                log.info(f"Tweet ID ({id_str}) has already been processed.")
             if success >= max_requests: break
     log.info(f"Replied to {success} tweets.")
     

@@ -16,4 +16,9 @@ services:
          - TWITTER_API_KEYS_FILE=/run/secrets/twitter-dev
         deploy:
             restart_policy:
-                condition: none
+                condition: any
+                delay: 15m
+            resources:
+                limits:
+                    cpus: "0.10"
+                    memory: "64MB"
