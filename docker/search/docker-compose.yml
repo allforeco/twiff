@@ -1,0 +1,19 @@
+version: '3.8'
+
+secrets:
+    twitter-dev:
+        file: ./dev.env
+
+services:
+    app:
+        image: twiff/search:latest
+        volumes:
+         - ./output:/app/output
+         - ./logs:/app/logs
+        secrets:
+         - twitter-dev
+        environment:
+         - TWITTER_API_KEYS_FILE=/run/secrets/twitter-dev
+        deploy:
+            restart_policy:
+                condition: none

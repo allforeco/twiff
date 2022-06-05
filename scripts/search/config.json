@@ -1,0 +1,45 @@
+{
+    "search": {
+        "module": "twiff.search",
+        "call": "search",
+        "config": {
+            "cursor": "/app/cursor.json",
+            "query": "(#twiff OR #Twiff) -is:retweet -from:twiff_bot"
+        }
+    },
+    "like-condition": {
+        "module": "twiff.interact.like",
+        "call": "T4FLikeCondition",
+        "config": {
+            "kwarg1": null
+        }
+    },
+    "parser": {
+        "module": "twiff.interact.parse",
+        "call": "T4FParser",
+        "config": {
+            "config": "/app/config/parser.json"
+        }
+    },
+    "reply-generator": {
+        "module": "twiff.interact.reply",
+        "call": "T4FReplyGenerator",
+        "config": {
+            "path": "/app/config/responses.json"
+        }
+    },
+    "retweet-condition": {
+        "module": "twiff.interact.reply",
+        "call": "T4FReplyGenerator",
+        "config": {
+            "path": "/app/config/responses.json"
+        }
+    },
+    "exporter": {
+        "module": "twiff.utils.io",
+        "call": "dump_json_items",
+        "config": {
+            "output": "/app/output"
+        }
+    }
+}

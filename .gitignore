@@ -1,9 +1,6 @@
 # Specific Files
-/exports
-/logs
-cursor.json
-keys.json
-*.tar
+docker/search/output
+docker/search/logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -109,6 +106,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+*.env
 .env
 .venv
 env/

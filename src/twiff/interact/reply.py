@@ -1,10 +1,15 @@
 import json
-
+import logging
 from pathlib import Path
 
 from typing import *
 
-class ReplyGenerator:
+from abc import ABC, abstractmethod
+
+log = logging.getLogger(__name__)
+
+
+class ReplyGenerator(ABC):
     """ ...
     """
     def __init__(self, path:str) -> None:
@@ -12,6 +17,7 @@ class ReplyGenerator:
         with open(self.path, 'r') as fp:
             self.responses = json.load(fp)
     
+    @abstractmethod
     def __call__(self, parsed_tweet:Dict) -> str:
         """ Generate reponse based on parsed_tweet.
         
@@ -22,26 +28,26 @@ class ReplyGenerator:
                     
             Returns:
                 response (str): Response text for the reply tweet.
+                
+            Example::
+                >>> if parsed_tweet['response']=='success':
+                        return self.responses['tweet-parse-success']
+                    else:
+                        return self.responses['tweet-parse-failed']
         """
-        if parsed_tweet['response']=='success':
-            return self.responses['tweet-parse-success']
-        else:
-            return self.responses['tweet-parse-failed']
-        
-# -----------------------------------------------------
-# ---------------- New code from here -----------------
-# -----------------------------------------------------
+        pass
 
-# Added _v2 to the new methods as some conflict with existing methods
-
-class ReplyGenerator:
-    """ ...
+    
+class T4FReplyGenerator(ReplyGenerator):
+    """ INSERT CLASS DESCRIPTION & ARGUMENTS + EXAMPLE HERE
+    
     """
 
     def __init__(self, path: str) -> None:
-        self.path = Path(path)
-        with open(self.path, 'r') as fp:
-            self.responses = json.load(fp)
+        '''
+        Initialise the ReplyGenerator instance.
+        '''
+        super(T4FReplyGenerator, self).__init__(path)
 
     def __call__(self, parsed_tweet: Dict) -> str:
         """ Generate response based on parsed_tweet.
@@ -54,7 +60,6 @@ class ReplyGenerator:
             Returns:
                 response (str): Response text for the reply tweet.
         """
-
         # Find the correct response
         sResponseType = "tweet-parse-" + parsed_tweet["response"]
         if parsed_tweet["response"] == "success":
@@ -84,5 +89,3 @@ class ReplyGenerator:
                     return self.responses['tweet-parse-failed']
             else:
                 return self.responses['tweet-parse-failed']
-
-

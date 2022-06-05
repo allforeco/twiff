@@ -2,13 +2,15 @@ import os
 import sys
 import json
 import logging
+from importlib import import_module
 
 log = logging.getLogger(__name__)
 
-if __name__ == "__main__":
+
+def main():
     # Logging
-    logging.basicConfig(format="[ %(asctime)s ] %(name)s | %(levelname)s | %(message)s", datefmt="%m/%d/%Y %I:%M:%S%p", level=logging.INFO)
-    log.info(f"Executing: {sys.argv}")
+    logging.basicConfig(format="Twitter4Future: [ %(asctime)s ] %(name)s | %(levelname)s | %(message)s", datefmt="%m/%d/%Y %I:%M:%S%p", level=logging.INFO)
+    log.info(f"Executing {sys.argv[1]}...")
     
     # Ensure correct number of args
     if len(sys.argv) < 3:
@@ -22,12 +24,11 @@ if __name__ == "__main__":
         
     # Load configuration for run
     with open(sys.argv[2], 'r') as fp:
-        config = json.load(fp)
-    
-    # Run requested mode
-    if "search" in sys.argv[1]:
-        from twiff import search
-        arg_parser = search.get_arg_parser()
-        arg_parser.set_defaults(**config)
-        args = arg_parser.parse_args([])
-        search.main(args)
+        args = json.load(fp)
+        
+    # Execute requested mode
+    module = import_module(f"twiff.{sys.argv[1]}")
+    module.main(args)
+
+if __name__ == "__main__":
+    main()

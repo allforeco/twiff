@@ -1,4 +1,4 @@
 {
-    "config": "/app/search.json",
-    "keys": "/app/keys.json"
+    "config": "/app/config/config.json",
+    "max_requests": 10
 }
