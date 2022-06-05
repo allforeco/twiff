@@ -1,6 +1,6 @@
 # Docker
 
-All docker images should be called from project root directory.
+All docker images should be called from project root directory. The application requires the Twitter Developer API keys; place the keys in a dev.env file in the job directory e.g. `docker\search\dev.env'.
 
 ### Building an image
 
