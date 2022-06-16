@@ -1,6 +1,7 @@
+import datetime
 import json
 import logging
-import datetime
+from pathlib import Path
 
 from typing import *
 
@@ -13,11 +14,11 @@ class Parser(ABC):
     """ Base Parser Class for extracting information fields from input object, specific implementations
         should override the `__call__` method for extracting data from the object (usually a freeform text
         field) and return the parser data in the user-specified format to be used by other processes.
-            
+
         CONTRACT:
             Returned data should be in the following format; response generator should only attempt to create
             a response if the "response" field is "success" likewise the retweet condition is the same.
-            
+
             dParsed = {"response": "success",
                        "data": {"num_people": nPeople,
                                 "created_at": tDate.strftime("%d-%m-%Y"),
@@ -25,39 +26,40 @@ class Parser(ABC):
                                 "location": sFullLocation,
                                 "url": sURL},
                        "errors": None}
-                       
+
        NOTE:
             Returned key, value pairs should contain necessary information for the
             reponse_generator to select the approriate response. An example of how
             this is used is shown below.
-    
+
         Args:
             tweet (Dict): Standard extended JSON tweet response.
-        
+
         Returns:
             parsed_tweet (Dict): Parsed tweet data in JSON format.
-            
+
         Example::
             >>> config = "/path/to/JSON"
             >>> parser = ParserChild(config)
-            >>> result = parser(tweets)      
+            >>> result = parser(tweets)
     """
-    def __init__(self, config:str) -> None:
+
+    def __init__(self, config: str) -> None:
         '''
         Initialise the TweetParser instance.
         '''
         # Load configuration from JSON file.
         with open(config, "r") as fp:
-            self.config = json.load(fp)
-    
+        self.config = json.load(fp)
+
     @abstractmethod
-    def __call__(self, tweet:Dict) -> Dict:
+    def __call__(self, tweet: Dict) -> Dict:
         '''
         Forward method to parse the tweet and return parsed data fields.
         '''
-        pass  
+        pass
 
-    
+
 class T4FParser(Parser):
     """ Parses tweet.
 
@@ -71,43 +73,60 @@ class T4FParser(Parser):
 
         Returns:
             parsed_tweet (Dict): Parsed tweet data in JSON format.
-            response: success or failed
-            tweettype: Normal or Quoted
-            data: extracted twiff data
-            errors: Possible errors are:
-                hashtag_twiff_not_found
-                twifftext_too_short
-                no_org_found
-                no_country_found
-                no_city_found
-                no_people_found
+                response: success or failed
+                tweettype: Normal or Quoted
+                twiff_id: ID of a valid twiff tweet, or None
+                quote_id: ID of the qouted tweet from a valid twiff tweet, or None
+                data: extracted twiff data
+                errors: Possible errors are:
+                    hashtag_twiff_not_found
+                    twifftext_too_short
+                    no_org_found
+                    no_country_found
+                    no_city_found
+                    no_people_found
 
         Example::
             >>> config = "/path/to/JSON"
             >>> parser = TweetParser_v2(config)
-            >>> result = parser(tweets, users)      
+            >>> result = parser(tweets, users)
     """
-    def __init__(self, config:str) -> None:
+
+    def __init__(self, config: str) -> None:
         '''
         Initialise the TweetParser_v2 instance.
         '''
         super(T4FParser, self).__init__(config)
-        
+
         # Configuration
+        with open('ignored_users.json', "r") as fp:
+            self.IgnoredUsers = json.load(fp)
         self.BannedWords = self.config['banned_words']
-        
-    def __call__(self, tweet:Dict, users:list) -> Dict:
+
+        self.uDefaultResult = {"response": "failed",
+                               "tweettype": None,
+                               "twiff_id": None,
+                               "quote_id": None,
+                               "data": {"num_people": 0,
+                                        "created_at": "",
+                                        "organization": "",
+                                        "location": "",
+                                        "url": ""},
+                               "errors": []}
+
+    def __call__(self, tweet: dict, users: dict) -> dict:
         '''
         Forward pass
         '''
+
         # To start parsing the twiff data, first extract some tweet data
         sTweetText = tweet["text"]
         dEntities = tweet["entities"]
+        r = self.uDefaultResult
         dUrls: []
         if "urls" in dEntities:
             dUrls = dEntities["urls"]
         tTweetDate = tweet["created_at"]
-        
         # Let's find the start of the twiff string, drop the rest, not needed
         nTwiffStart = sTweetText.find("#twiff")
         if nTwiffStart < 0:
@@ -115,9 +134,9 @@ class T4FParser(Parser):
         if nTwiffStart < 0:
             nTwiffStart = sTweetText.find("#TWIFF")
         if nTwiffStart < 0:
-            return {"response": "failed", "data": None, "errors": ["hashtag_twiff_not_found"]}
+            r["errors"] = AddError_v2(r["errors"], "hashtag_twiff_not_found")
+            return r
         sTwiffText = sTweetText[nTwiffStart:]
-        
         # When the last URL is a display URL to a picture drop it too,
         # to prevent using the display URL as the quoted tweet parameter
         if "urls" in dEntities:
@@ -127,7 +146,6 @@ class T4FParser(Parser):
                     nLen = len(sTwiffText) - (len(sDisplayUrl) + 13)
                     sTwiffText = sTwiffText[:nLen]
                     break
-                    
         # Find the correct tweet URL, for the tweet displaying the action
         # It may not necessarily be the reporting tweet
         sTweetUrl = ""
@@ -148,50 +166,61 @@ class T4FParser(Parser):
                             sQuotedUserName = sTweetUrl.split("/")[3]
                             sQuotedUserId = FindUserIdByName_v2(users, sQuotedUserName)
                     break
-                    
         if sTweetUrl == "":
             sUserId = tweet["author_id"]
             sUserName = FindUserNameById_v2(users, sUserId)
             sTweetUrl = "https://twitter.com/" + sUserName + "/status/" + tweet["id"]
-            
         # Parse the twiff
-        dParsed = self.TwiffParser_v2(sTwiffText, tTweetDate, sTweetUrl, sQuoteURL)
-        
+        r = self.TwiffParser_v2(sTwiffText, tTweetDate, sTweetUrl, sQuoteURL)
+        r["twiff_id"] = sTweetUrl.split("/")[5]
+        if sQuoteURL != "":
+            r["quote_id"] = sQuoteURL.split("/")[5]
         # Check for banned words
         if any(word in sTweetText.split() for word in self.BannedWords["single_words"]):
-            dParsed["response"] = "failed"
-            dParsed["errors"] = AddError_v2(dParsed["errors"], "banned_word")
+            r["response"] = "failed"
+            r["errors"] = AddError_v2(r["errors"], "banned_word")
+            r["twiff_id"] = None
+            r["quote_id"] = None
         elif any(word in sTweetText for word in self.BannedWords["multi_words"]):
-            dParsed["response"] = "failed"
-            dParsed["errors"] = AddError_v2(dParsed["errors"], "banned_word")
-            
-        dParsed["tweettype"] = sTweetType
-        
-        return dParsed
+            r["response"] = "failed"
+            r["errors"] = AddError_v2(r["errors"], "banned_word")
+            r["twiff_id"] = None
+            r["quote_id"] = None
+        # Check for ignored users
+        if self.CheckIgnoredUser(tweet["author_id"], users):
+            r["errors"] = AddError_v2(r["errors"], "ignored_user")
+            r["twiff_id"] = None
+            r["quote_id"] = None
+        if sTweetType == "Quoted":
+            if self.CheckIgnoredUser(sQuotedUserId, users):
+                r["errors"] = AddError_v2(r["errors"], "ignored_user")
+                r["twiff_id"] = None
+                r["quote_id"] = None
+        r["tweettype"] = sTweetType
+        return r
 
-    def TwiffParser_v2(self, TwiffText, TweetDate, TweetURL, QuoteURL) -> Dict:
-        '''
+    def TwiffParser_v2(self, TwiffText, TweetDate, TweetURL, QuoteURL) -> dict:
+        """
         # Let's see if we can extract twiff data from the tweet
         # Us machines need to account for the fact that humans make mistakes,
         # so let's see if we can work with whatever the human gave us.
-        
+
             Args:
-                TwiffText (dtype): description
-                TweetDate (dtype): description
-                TweetURL (dtype): description
-                QuoteURL (dtype): description
-                
+                TwiffText (String): Text extracted from the tweet containing only twiff data
+                TweetDate (DateTime): Date and time of the twiff
+                TweetURL (String): URL to the tweet containing the twiff
+                QuoteURL (String): URL of the tweet qouted by the twiff, if no qoute then this field is ""
+
             Example::
-                >>> vars = {}
-                >>> result = TwiffParser_v2(**vars)
-                >>> log.info(result)
-        
-        '''        
-        # TwiffText is a string that only contains twiff data, can it contain useful information?
-        # primary check to prevent errors in the next section
-        aErrors = []
+                #>>> vars = {}
+                #>>> result = TwiffParser_v2(**vars)
+                #>>> log.info(result)
+
+        """
+        r = self.uDefaultResult
         if len(TwiffText) < 10:
-            return {"response": "failed", "data": None, "errors": AddError_v2(aErrors, "twifftext_too_short")}
+            r["errors"] = AddError_v2(r["errors"], "twifftext_too_short")
+            return r
 
         # let's assume the 6th character is a delimiter,
         # Unless that is a space, then check for a delimiter after the space, or numbers.
@@ -200,29 +229,26 @@ class T4FParser(Parser):
             i += 1
         sDelimiter = TwiffText[i:i + 1]
         TwiffText = TwiffText[6:]
-        
         # remove the quote URL if needed
         if QuoteURL != "":
             TwiffText = TwiffText.replace(QuoteURL, "")
-            
         # Also cut out when a new line is started
         if "\n" in TwiffText:
             TwiffText = TwiffText.split("\n")[0]
-            
+        if "https://t.co/" in TwiffText:
+            TwiffText = TwiffText.split("https://t.co/")[0]
         # TwiffText is a string that only contains twiff data, can it contain useful information?
         # secondary check to see if continuing is useful
         if len(TwiffText) < 10:
-            return {"response": "failed", "data": None, "errors": AddError_v2(aErrors, "twifftext_too_short")}
-        
+            r["errors"] = AddError_v2(r["errors"], "twifftext_too_short")
+            return r
         # Now we know the delimiter, create the datafields
         sDatafields = TwiffText.split(sDelimiter)
-        
         # Clean up actions
         i = 0
         while i < len(sDatafields):
             sDatafields[i] = sDatafields[i].strip(" ()[]{}#\n")  # Sometime people use brackets :\
             i += 1
-            
         # Let's try to get some results
         nPeople = 0  # Expected as parameter 0
         sOrganisation = ""  # Expected as parameter 1
@@ -231,7 +257,6 @@ class T4FParser(Parser):
         sCity = ""  # Expected as parameter 4
         tDate: datetime = None  # Expected as parameter 5
         sURL = ""  # Expected as parameter 6
-        
         # But humans aren't perfect, so they'll probs mess up :)
         for sDatafield in sDatafields:
             if sDatafield == "":
@@ -263,17 +288,14 @@ class T4FParser(Parser):
             if sCity == "":
                 sCity = sDatafield
                 continue
-                
         # We now came out of a very long loop checking twiff data letter by letter
         # If we don't have a city, but do have a state, the state was probs omitted
         if sState != "" and sCity == "":
             sCity = sState
             sState = ""
-            
         # If no date was found, use tweet date
         if tDate is None:
             tDate = datetime.datetime.strptime(TweetDate, "%Y-%m-%dT%H:%M:%S.000Z")
-            
         if sURL == "":
             sURL = TweetURL
 
@@ -287,73 +309,143 @@ class T4FParser(Parser):
 
         # We now made the most of the data as we could, let's do some basic checks before reporting
         if len(sOrganisation) < 3 or len(sOrganisation) > 50 or "http" in sOrganisation:
-            aErrors = AddError_v2(aErrors, "no_org_found")
+            r["errors"] = AddError_v2(r["errors"], "no_org_found")
         if len(sCountry) < 2 or len(sCountry) > 35 or "http" in sCountry:
-            aErrors = AddError_v2(aErrors, "no_country_found")
+            r["errors"] = AddError_v2(r["errors"], "no_country_found")
         if len(sState) > 35 or "http" in sState:
-            aErrors = AddError_v2(aErrors, "no_state_found")
+            r["errors"] = AddError_v2(r["errors"], "no_state_found")
         if len(sCity) > 60 or "http" in sCity:
-            aErrors = AddError_v2(aErrors, "no_city_found")
+            r["errors"] = AddError_v2(r["errors"], "no_city_found")
         if nPeople == 0:
-            aErrors = AddError_v2(aErrors, "no_people_found")
-            
+            r["errors"] = AddError_v2(r["errors"], "no_people_found")
         # Report back the results
         dParsed: dict
         sFullLocation = sCountry
         if sState != "":
             sFullLocation = sFullLocation + " " + sState
         sFullLocation = sFullLocation + " " + sCity
-        if len(aErrors) > 0:
-            dParsed = {"response": "failed",
-                       "data": {"num_people": nPeople,
-                                "created_at": tDate.strftime("%d-%m-%Y"),
-                                "organization": sOrganisation,
-                                "location": sFullLocation,
-                                "url": sURL},
-                       "errors": aErrors}
+        if len(r["errors"]) > 0:
+            r["response"] = "failed"
         else:
-            dParsed = {"response": "success",
-                       "data": {"num_people": nPeople,
-                                "created_at": tDate.strftime("%d-%m-%Y"),
-                                "organization": sOrganisation,
-                                "location": sFullLocation,
-                                "url": sURL},
-                       "errors": None}
-        return dParsed
+            r["response"] = "success"
+        r["data"] = {"num_people": nPeople,
+                     "created_at": tDate.strftime("%d-%m-%Y"),
+                     "organization": sOrganisation,
+                     "location": sFullLocation,
+                     "url": sURL}
+        return r
+
+    def CheckIgnoredUser(self, UserID, users: dict) -> bool:
+        """
+        Check whether the user will be ignored
+
+        Args:
+            UserID (String): The user ID to search for
+            users (dict): The user information to search in.
+
+        Returns:
+            Ignored (bool): True if the user should be ignored
+
+        """
+
+        if UserID in self.IgnoredUsers:
+            return True
+        else:
+            # If not found by ID, find by handle
+            sUserName = FindUserNameById_v2(users, UserID)
+            sEntry = "x"
+            for userdata in self.IgnoredUsers:
+                if self.IgnoredUsers[userdata] == sUserName:
+                    sEntry = userdata
+            if sEntry != "x":
+                del self.IgnoredUsers[sEntry]
+                self.IgnoredUsers[UserID] = sUserName
+                with open(Path("ignored_users.json"), 'w') as fp:
+                    json.dump(self.IgnoredUsers, fp)
+                return True
+        return False
 
 
-def FindUserNameById_v2(users:Dict, userID:str):
-    user = {}
+def FindUserNameById_v2(users: dict, userID):
+    """
+    Find a users name by its ID
+
+    Args:
+        users (list): The user information to search in.
+        userID (String): The user ID to search for
+
+    Returns:
+        Username (String): The name of the user, None if no user was found
+
+    """
+
+    user: dict
     for user in users.values():
         if user["id"] == userID:
             return user["username"]
 
-def FindUserIdByName_v2(users:Dict, userName:str):
-    user = {}
+
+def FindUserIdByName_v2(users: dict, userName):
+    """
+    Find a users ID by its name
+
+    Args:
+        users (list): The user information to search in.
+        userName (String): The user name to search for
+
+    Returns:
+        UserID (String): The ID of the user, None if no user was found
+
+    """
+
+    user: dict
     for user in users.values():
         if user["username"] == userName:
             return user["id"]
 
-def AddError_v2(errors:list, newError: str) -> []:
+
+def AddError_v2(errors: [], newError: str) -> []:
+    """
+    Add error to error list
+
+    Args:
+        errors (list): List of current errors
+        newError (String): The new error to add to the list
+
+    Returns:
+        errors (list): The new list of errors
+
+    """
+
     if errors is None:
         errors = [newError]
     else:
         errors.append(newError)
     return errors
 
-def TryParseDateOnly_v2(DateTimeString:str):
-    # Parses 4 formats, year always 4 digits
-    # 1 when / is used in the string American annotation is assumed
-    #      1.1 Year first or month first: 2000/31/12 or 12/31/2000
-    # 2 any other delimiter EU standard is assumed
-    #      2.1 Year first or day first: 31-12-2000 or 2000-12-31
+
+def TryParseDateOnly_v2(DateTimeString: str):
+    """
+    Parses 4 formats, year always 4 digits
+    1 when / is used in the string American annotation is assumed
+         1.1 Year first or month first: 2000/31/12 or 12/31/2000
+    2 any other delimiter EU standard is assumed
+         2.1 Year first or day first: 31-12-2000 or 2000-12-31
+
+    Args:
+        DateTimeString (String): The date time string to parse
+
+    Returns:
+        ParseResult (bool): True if parse is successful
+        DateTime (datetime): The parsed date/time
+
+    """
+
     tDate: datetime = datetime.datetime.now()
     # sDate = tDate.strftime("%d-%m-%Y")
-    
     # First check if this has any chance of success
     if len(DateTimeString) != 10:
         return False, tDate
-    
     # Is the year in the first place?
     if DateTimeString[4:5].isnumeric():
         # If so split by the char in 3rd place
@@ -375,206 +467,5 @@ def TryParseDateOnly_v2(DateTimeString:str):
         else:
             # Rotate so year goes last
             sDate = sNumbers[2] + "-" + sNumbers[1] + "-" + sNumbers[0]
-            
     tDate = datetime.datetime.strptime(sDate, "%d-%m-%Y")
-    
     return True, tDate
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# import re
-# import time
-# import datetime
-# import torchtext
-# import dateparser
-
-# from typing import *
-
-# class TweetParser:
-#     """ Parses tweet.
-    
-#         NOTE:
-#             Returned key, value pairs should contain necessary information for the
-#             reponse_generator to select the approriate response. An example of how
-#             this is used is shown below.
-    
-#         Args:
-#             tweet (Dict): Standard extended JSON tweet response.
-        
-#         Returns:
-#             parsed_tweet (Dict): Parsed tweet data in JSON format.
-            
-#         Example::
-#             >>> X
-#             >>> Y
-#     """
-#     def __init__(self) -> None:
-#         pass
-    
-#     def __call__(tweet:Dict) -> Dict:
-#         pass  
-
-    
-# class SimpleParser(TweetParser):
-#     def __init__(self) -> None:
-#         super(SimpleParser, self).__init__()
-        
-#     def __call__(self, tweet:Dict) -> Dict:
-#         # Retrieve text from tweet
-#         text = tweet['text'].lower()
-
-#         # Remove data before '#twiff' token
-#         token_idx = text.find('#twiff')
-#         if token_idx:
-#             text = text[token_idx+len('#twiff'):]
-
-#         # Remove data after 'http' token
-#         token_idx = text.find('http')
-#         if token_idx:
-#             text = text[:token_idx]
-
-#         # Slight cleaning of tokens
-#         tokens = [item.strip() for item in text.split(',') if item!='']
-
-#         # Extract number of people
-#         num_people = num_people_from_tokens(tokens)
-
-#         # Remove integer tokens
-#         tokens = remove_integer_tokens(tokens)
-
-#         if num_people:
-#             parsed_tweet = {
-#                 "response": "success",
-#                 "data": {
-#                     "num_people":num_people, 
-#                     "created_at":tweet['created_at'], 
-#                     "organization":tokens[0], 
-#                     "location":', '.join(tokens[1:])
-#                 }
-#             }
-#         else:
-#             parsed_tweet = {
-#                 "response":"failed",
-#                 "data":None
-#             }
-
-#         return parsed_tweet
-
-
-# def num_people_from_tokens(tokens):
-#     # Search for first token with run of 1
-#     run = 0
-#     num_people = None
-#     for tdx, token in enumerate(tokens):
-#         # Attempt to convert token to integer format - accumulate number of integers encountered.
-#         try:
-#             int(token)
-#             run += 1
-#         except:
-#             if run==1:
-#                 num_people = tokens[tdx-1]
-#                 break
-#             run = 0
-        
-#     return num_people
-
-# def remove_integer_tokens(tokens):   
-#     # Remove any other integer from tokens
-#     int_idxs = []
-#     for tdx, token in enumerate(tokens):
-#         try:
-#             int(token)
-#             int_idxs.append(tdx)
-#         except:
-#             pass
-#     for int_idx in int_idxs[::-1]:
-#         del tokens[int_idx]
-        
-#     return tokens
-
-# def remove_integers_from_tokens(tokens):
-#     for tdx, token in enumerate(tokens):
-#         token = token.strip().lower()
-#         token = remove_emoji(token)
-#         token = re.sub('[,:;(){}##/?@!.\[\]&%$*^\+=|<>`~"\']', ' ', token)
-        
-#         sub_tokens = torchtext.data.get_tokenizer("basic_english")(token)
-        
-#         int_idxs = []
-#         for idx, sub_token in enumerate(sub_tokens):
-#             try:
-#                 int(sub_token)
-#                 int_idxs.append(idx)
-#             except:
-#                 pass
-        
-#         for int_idx in int_idxs[::-1]:
-#             del sub_tokens[int_idx]
-            
-#         tokens[tdx] = ''.join(sub_tokens)
-    
-#     return tokens
-
-# -----------------------------------------------------
-# ---------------- New code from here -----------------
-# -----------------------------------------------------
-
-# Added _v2 to the new methods as some conflict with existing methods
-
