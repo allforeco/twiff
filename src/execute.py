@@ -15,7 +15,7 @@ def main():
         format="Twitter4Future: [ %(asctime)s ] %(name)s | %(levelname)s | %(message)s", 
         datefmt="%m/%d/%Y %I:%M:%S%p", 
         handlers = [
-            logging.FileHandler(f"/app/logs/out.log", mode='a'),
+            logging.FileHandler(f"/home/deploy/gamechanger/twiff/logs/out.log", mode='a'),
             logging.StreamHandler()
         ]
     )
