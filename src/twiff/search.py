@@ -208,7 +208,7 @@ def reply(client:Any, parsed_tweets:Dict, generator:Callable, max_requests:Optio
     """
     # TODO: Replying to tweets needs persistent memory of replied-to tweets, can't get this from API easily to use filesystem.
     from pathlib import Path
-    path = "/app/output/tweets"
+    path = "/home/deploy/gamechanger/twiff/output/tweets"
     ids = [p.name.split('.')[0] for p in Path(path).glob("*.json")] if Path(path).exists() else []
     
     if max_requests:
