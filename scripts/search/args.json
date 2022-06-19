@@ -1,4 +1,4 @@
 {
-    "config": "/app/config/config.json",
+    "config": "/home/deploy/gamechanger/twiff/scripts/search/config.json",
     "max_requests": 50
 }
