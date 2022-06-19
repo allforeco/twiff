@@ -103,17 +103,6 @@ class T4FParser(Parser):
             self.IgnoredUsers = json.load(fp)
         self.BannedWords = self.config['banned_words']
 
-        self.uDefaultResult = {"response": "failed",
-                               "tweettype": None,
-                               "twiff_id": None,
-                               "quote_id": None,
-                               "data": {"num_people": 0,
-                                        "created_at": "",
-                                        "organization": "",
-                                        "location": "",
-                                        "url": ""},
-                               "errors": []}
-
     def __call__(self, tweet: dict, users: dict) -> dict:
         '''
         Forward pass
@@ -122,7 +111,16 @@ class T4FParser(Parser):
         # To start parsing the twiff data, first extract some tweet data
         sTweetText = tweet["text"]
         dEntities = tweet["entities"]
-        r = self.uDefaultResult
+        r = {"response": "failed",
+             "tweettype": None,
+             "twiff_id": None,
+             "quote_id": None,
+             "data": {"num_people": 0,
+                      "created_at": "",
+                      "organization": "",
+                      "location": "",
+                      "url": ""},
+             "errors": []}
         dUrls: []
         if "urls" in dEntities:
             dUrls = dEntities["urls"]
@@ -148,7 +146,6 @@ class T4FParser(Parser):
                     break
         # Find the correct tweet URL, for the tweet displaying the action
         # It may not necessarily be the reporting tweet
-        sTweetUrl = ""
         sQuoteURL = ""
         sTweetType = "Normal"  # Remember tweet type for replies
         sQuotedUserId = ""
@@ -160,16 +157,14 @@ class T4FParser(Parser):
                     sTweetID = rft["id"]
                     sTweetType = "Quoted"
                     for Url in dUrls:
-                        if sTweetID in str(Url["expanded_url"]):
-                            sTweetUrl = Url["expanded_url"]
-                            sQuoteURL = Url["url"]
-                            sQuotedUserName = sTweetUrl.split("/")[3]
+                        if rft["id"] in str(Url["expanded_url"]):
+                            sQuoteURL = Url["expanded_url"]
+                            sQuotedUserName = sQuoteURL.split("/")[3]
                             sQuotedUserId = FindUserIdByName_v2(users, sQuotedUserName)
                     break
-        if sTweetUrl == "":
-            sUserId = tweet["author_id"]
-            sUserName = FindUserNameById_v2(users, sUserId)
-            sTweetUrl = "https://twitter.com/" + sUserName + "/status/" + tweet["id"]
+        sUserId = tweet["author_id"]
+        sUserName = FindUserNameById_v2(users, sUserId)
+        sTweetUrl = "https://twitter.com/" + sUserName + "/status/" + tweet["id"]
         # Parse the twiff
         r = self.TwiffParser_v2(sTwiffText, tTweetDate, sTweetUrl, sQuoteURL)
         r["twiff_id"] = sTweetUrl.split("/")[5]
@@ -217,7 +212,16 @@ class T4FParser(Parser):
                 #>>> log.info(result)
 
         """
-        r = self.uDefaultResult
+        r = {"response": "failed",
+             "tweettype": None,
+             "twiff_id": None,
+             "quote_id": None,
+             "data": {"num_people": 0,
+                      "created_at": "",
+                      "organization": "",
+                      "location": "",
+                      "url": ""},
+             "errors": []}
         if len(TwiffText) < 10:
             r["errors"] = AddError_v2(r["errors"], "twifftext_too_short")
             return r
@@ -297,7 +301,10 @@ class T4FParser(Parser):
         if tDate is None:
             tDate = datetime.datetime.strptime(TweetDate, "%Y-%m-%dT%H:%M:%S.000Z")
         if sURL == "":
-            sURL = TweetURL
+            if QuoteURL == "":
+                sURL = TweetURL
+            else:
+                sURL = QuoteURL
 
         # Clean up locations
         if "." in sCountry:
