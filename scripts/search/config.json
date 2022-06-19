@@ -3,7 +3,7 @@
         "module": "twiff.search",
         "call": "search",
         "config": {
-            "cursor": "/app/logs/cursor.json",
+            "cursor": "/home/deploy/gamechanger/twiff/logs/cursor.json",
             "query": "(#twiff OR #Twiff) -is:retweet -from:twiff_bot"
         }
     },
@@ -18,28 +18,28 @@
         "module": "twiff.interact.parse",
         "call": "T4FParser",
         "config": {
-            "config": "/app/config/parser.json"
+            "config": "/home/deploy/gamechanger/twiff/scripts/search/parser.json"
         }
     },
     "reply-generator": {
         "module": "twiff.interact.reply",
         "call": "T4FReplyGenerator",
         "config": {
-            "path": "/app/config/responses.json"
+            "path": "/home/deploy/gamechanger/twiff/scripts/search/responses.json"
         }
     },
     "retweet-condition": {
         "module": "twiff.interact.reply",
         "call": "T4FReplyGenerator",
         "config": {
-            "path": "/app/config/responses.json"
+            "path": "/home/deploy/gamechanger/twiff/scripts/search/responses.json"
         }
     },
     "exporter": {
         "module": "twiff.utils.io",
         "call": "dump_json_items",
         "config": {
-            "output": "/app/output"
+            "output": "/home/deploy/gamechanger/twiff/output"
         }
     }
 }
