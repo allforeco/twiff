@@ -86,34 +86,6 @@ def search(client:Any, cursor:str, query:str, max_requests:Optional[int]=10) -> 
     log.info(f"Retrieved {len(tweets)} tweets and {len(users)} associated users. Encountered {len(errors)} errors.")
             
     return tweets, users, errors, metadata
-    
-    
-def like(client:Any, tweets:Dict, condition:Callable, max_requests:Optional[int]=10) -> None:
-    """ Likes tweets using associated tweet id.
-    
-        Using max_likes may be necessary depending on whether you can afford to respect wait limits for all retrieved tweets.
-        
-        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
-        Rate limit: 50 requests per 15-minute window per each authenticated user
-    
-        Args:
-            X
-            
-        Returns:
-            X
-            
-        Example::
-            X
-            
-    """
-    if max_requests:
-        success = 0
-        for idx, (id_str, tweet) in enumerate(tweets.items()):
-            if condition(tweet):
-                client.like(id_str)
-                success += 1
-            if success >= max_requests: break
-    log.info(f"Liked {success} tweets.")
                        
     
 def parse(tweets:Dict, users:Dict, parser:Callable) -> Dict:
@@ -141,6 +113,70 @@ def parse(tweets:Dict, users:Dict, parser:Callable) -> Dict:
     log.info(f"Successfully parsed {len([None for val in parsed_tweets.values() if val is not None])} tweets out of {len(tweets)}.")
         
     return parsed_tweets
+
+
+def like(client:Any, parsed_tweets:Dict, condition:Callable, max_requests:Optional[int]=10) -> None:
+    """ Likes tweets using associated tweet id.
+
+        Using max_likes may be necessary depending on whether you can afford to respect wait limits for all retrieved tweets.
+
+        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
+        Rate limit: 50 requests per 15-minute window per each authenticated user
+
+        Args:
+            X
+
+        Returns:
+            X
+
+        Example::
+            X
+
+    """
+    if max_requests:
+        success = 0
+        for idx, (id_str, parsed_tweet) in enumerate(parsed_tweets.items()):
+            if parsed_tweet["twiff_id"] is not None:
+                # if condition(tweet): // Removed, parser handles the conditions
+                client.like(parsed_tweet["twiff_id"])
+                success += 1
+            if parsed_tweet["quote_id"] is not None:
+                client.like(parsed_tweet["quote_id"])
+                success += 1
+            if success >= max_requests: break
+    log.info(f"Liked {success} tweets.")
+
+
+def retweet(client:Any, parsed_tweets:Dict, condition:Callable, max_requests:Optional[int]=10) -> None:
+    """ Retweets tweets using associated tweet id.
+
+        Using max_retweets may be necessary depending on whether you can afford to respect wait limits for all retrieved tweets.
+
+        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
+        Rate limit: 50 requests per 15-minute window per each authenticated user
+
+        Args:
+            X
+
+        Returns:
+            X
+
+        Example:
+            X
+
+    """
+    if max_requests:
+        success = 0
+        for idx, (id_str, parsed_tweet) in enumerate(parsed_tweets.items()):
+            if parsed_tweet["twiff_id"] is not None:
+                # if condition(parsed_tweet) is not None: // Removed, parser handles the conditions
+                client.retweet(parsed_tweet["twiff_id"])
+                success += 1
+            if parsed_tweet["quote_id"] is not None:
+                client.retweet(parsed_tweet["quote_id"])
+                success += 1
+            if success >= max_requests: break
+    log.info(f"Retweeted {success} tweets.")
             
     
 def reply(client:Any, parsed_tweets:Dict, generator:Callable, max_requests:Optional[int]=10) -> None:
@@ -172,7 +208,7 @@ def reply(client:Any, parsed_tweets:Dict, generator:Callable, max_requests:Optio
     """
     # TODO: Replying to tweets needs persistent memory of replied-to tweets, can't get this from API easily to use filesystem.
     from pathlib import Path
-    path = "/app/output/tweets"
+    path = "/home/deploy/gamechanger/twiff/output/tweets"
     ids = [p.name.split('.')[0] for p in Path(path).glob("*.json")] if Path(path).exists() else []
     
     if max_requests:
@@ -188,35 +224,6 @@ def reply(client:Any, parsed_tweets:Dict, generator:Callable, max_requests:Optio
                 log.info(f"Tweet ID ({id_str}) has already been processed.")
             if success >= max_requests: break
     log.info(f"Replied to {success} tweets.")
-    
-    
-def retweet(client:Any, parsed_tweets:Dict, condition:Callable, max_requests:Optional[int]=10) -> None:
-    """ Likes tweets using associated tweet id.
-    
-        Using max_likes may be necessary depending on whether you can afford to respect wait limits for all retrieved tweets.
-        
-        Authentication methods supported: OAuth 2.0 Authorization Code with PKCE
-        Rate limit: 50 requests per 15-minute window per each authenticated user
-    
-        Args:
-            X
-            
-        Returns:
-            X
-            
-        Example::
-            X
-            
-    """
-    if max_requests:
-        success = 0
-        for idx, (id_str, parsed_tweet) in enumerate(parsed_tweets.items()):
-            if parsed_tweet["response"] == "success":
-                if condition(parsed_tweet) is not None:
-                    client.retweet(id_str)
-                    success += 1
-            if success >= max_requests: break
-    log.info(f"Retweeted {success} tweets.")
 
 
 def run(args:Namespace) -> None:
@@ -256,18 +263,18 @@ def run(args:Namespace) -> None:
     
     # Perform search using provided query.
     tweets, users, errors, metadata = search(client=client, max_requests=args.max_requests, **config['search']['config'])
-    
-    # Like retrieved tweets: like all retrieved tweets
-    like(client=client, tweets=tweets, condition=load_module(config, "like-condition"), max_requests=args.max_requests)
        
     # Attempt to parse tweets using provided method: parse according to pre-determined format
     parsed_tweets = parse(tweets=tweets, users=users, parser=load_module(config, "parser"))
+
+    # Like retrieved tweets: like parsed tweets
+    like(client=client, parsed_tweets=parsed_tweets, condition=load_module(config, "like-condition"), max_requests=args.max_requests)
+
+    # Retweet retrieved tweets: retweet parsed tweets
+    retweet(client=client, parsed_tweets=parsed_tweets, condition=load_module(config, "retweet-condition"), max_requests=args.max_requests)
     
     # Reply to parsed tweets using generated response: reply to all tweets with different responses
     reply(client=client, parsed_tweets=parsed_tweets, generator=load_module(config, "reply-generator"), max_requests=args.max_requests)
-    
-    # Retweet retrieved tweets: retweet successfully parsed tweets
-    retweet(client=client, parsed_tweets=parsed_tweets, condition=load_module(config, "retweet-condition"), max_requests=args.max_requests)
     
     # Export/dump data to disk for longer-term storage.
     load_module(config, "exporter", data={id_str:tweet for (id_str, tweet) in tweets.items()}, subdir="tweets")
